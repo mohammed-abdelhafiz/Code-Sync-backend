@@ -1,5 +1,6 @@
 import { Inngest } from 'inngest';
 import { UsersService } from '../users/users.service';
+import { deleteStreamUser, upsertStreamUser } from './stream';
 
 export const inngest = new Inngest({
   id: 'code-sync',
@@ -23,6 +24,11 @@ export function getInngestFunctions(usersService: UsersService) {
       };
 
       await usersService.create(newUser);
+      await upsertStreamUser({
+        id: newUser.clerkId,
+        name: newUser.name,
+        image: newUser.profileImage,
+      });
 
       console.log('User created:', newUser);
     },
@@ -37,6 +43,7 @@ export function getInngestFunctions(usersService: UsersService) {
       const { id } = event.data;
 
       await usersService.remove(id);
+      await deleteStreamUser(id);
 
       console.log('User deleted:', id);
     },
