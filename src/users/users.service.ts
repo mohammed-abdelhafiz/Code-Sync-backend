@@ -9,6 +9,10 @@ export class UsersService {
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
   ) {}
 
+  async findByClerkId(clerkId: string) {
+    return this.usersRepo.findOneBy({ clerkId });
+  }
+
   create(createUserDto: Partial<User>) {
     return this.usersRepo.save(createUserDto);
   }
