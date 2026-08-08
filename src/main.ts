@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { serve } from 'inngest/express';
 import { getInngestFunctions, inngest } from './lib/inngest';
 import { UsersService } from './users/users.service';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -31,6 +32,13 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api');
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   await app.listen(process.env.PORT ?? 5000, '0.0.0.0');
 }
