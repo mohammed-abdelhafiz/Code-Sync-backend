@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,8 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
 import { CreateSessionDto } from './dtos/create-session.dto';
-import { User } from 'src/users/entities/user.entity';
-import { chatClient, streamClient } from 'src/lib/stream';
+import { User } from '../users/entities/user.entity';
+import { chatClient, streamClient } from '../lib/stream';
 
 @Injectable()
 export class SessionService {
@@ -26,13 +27,15 @@ export class SessionService {
       host,
       callId,
     });
+    const savedSession = await this.sessionRepository.save(session);
+
     await streamClient.video.call('default', callId).getOrCreate({
       data: {
         created_by_id: host.clerkId,
         custom: {
           problem: sessionData.problem,
           difficulty: sessionData.difficulty,
-          sessionId: session.id,
+          sessionId: savedSession.id,
         },
       },
     });
@@ -41,7 +44,7 @@ export class SessionService {
       members: [host.clerkId],
     });
     await channel.create();
-    return this.sessionRepository.save(session);
+    return savedSession;
   }
 
   async getActiveSessions() {
@@ -56,8 +59,8 @@ export class SessionService {
     //get session where user is either host or participant
     const sessions = await this.sessionRepository.find({
       where: [
-        { status: 'completed', host: user },
-        { status: 'completed', participant: user },
+        { status: 'completed', host: { id: user.id } },
+        { status: 'completed', participant: { id: user.id } },
       ],
       order: { createdAt: 'DESC' },
       take: 20,
@@ -83,15 +86,22 @@ export class SessionService {
     if (session.status === 'completed') {
       throw new BadRequestException('Session is already completed');
     }
+    if (session.host?.id === user.id) {
+      throw new BadRequestException(
+        'Host cannot join their own session as participant',
+      );
+    }
     if (session.participant) {
       throw new BadRequestException('Session is already having a participant');
     }
 
-    const channel = chatClient.channel('messaging', session.callId);
-    await channel.addMembers([user.clerkId]);
-    return this.sessionRepository.update(sessionId, {
-      participant: user,
-    });
+    if (session.callId) {
+      const channel = chatClient.channel('messaging', session.callId);
+      await channel.addMembers([user.clerkId]);
+    }
+
+    session.participant = user;
+    return this.sessionRepository.save(session);
   }
 
   async endSession(sessionId: string, user: User) {
@@ -104,16 +114,19 @@ export class SessionService {
     if (session.status === 'completed') {
       throw new BadRequestException('Session is already completed');
     }
-    if (session.host.id !== user.id) {
-      throw new BadRequestException('Only host can end this session');
+    if (session.host?.id !== user.id) {
+      throw new ForbiddenException('Only host can end this session');
     }
 
-    const call = streamClient.video.call('default', session.callId as string);
-    await call.delete({ hard: true });
+    if (session.callId) {
+      const call = streamClient.video.call('default', session.callId);
+      await call.delete({ hard: true });
 
-    const channel = chatClient.channel('messaging', session.callId);
-    await channel.delete();
+      const channel = chatClient.channel('messaging', session.callId);
+      await channel.delete();
+    }
 
-    return this.sessionRepository.update(sessionId, { status: 'completed' });
+    session.status = 'completed';
+    return this.sessionRepository.save(session);
   }
 }

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { verifyToken } from '@clerk/backend';
 import { Request } from 'express';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {

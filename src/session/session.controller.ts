@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { SessionService } from './session.service';
 import { CreateSessionDto } from './dtos/create-session.dto';
-import { ClerkAuthGuard } from 'src/auth/guards/clerk-auth.guard';
+import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import type { Request } from 'express';
 
 @Controller('session')

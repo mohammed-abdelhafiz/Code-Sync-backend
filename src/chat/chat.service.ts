@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { chatClient } from 'src/lib/stream';
-import { User } from 'src/users/entities/user.entity';
+import { chatClient } from '../lib/stream';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class ChatService {
