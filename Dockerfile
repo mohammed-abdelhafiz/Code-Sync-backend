@@ -30,13 +30,20 @@ COPY . .
 # Build application
 RUN npm run build
 
+# Install only runtime dependencies in a clean layer.
+FROM base AS production-dependencies
+
+COPY package-lock.json package.json ./
+RUN npm ci --omit=dev
 
 # Final stage for app image
 FROM base
 
-# Copy built application
-COPY --from=build /app /app
+# Copy only what is required to run the service.
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/package.json ./package.json
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
-CMD [ "npm", "run", "start:prod" ]
+CMD [ "node", "dist/main" ]

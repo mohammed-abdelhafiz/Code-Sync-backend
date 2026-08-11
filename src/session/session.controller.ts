@@ -35,6 +35,7 @@ export class SessionController {
   }
 
   @Get(':id')
+  @UseGuards(ClerkAuthGuard)
   getSession(@Param('id') id: string) {
     return this.sessionService.getSession(id);
   }
